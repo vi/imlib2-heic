@@ -1,0 +1,9 @@
+bpg.so
+*.d
+*.o
+*.mkv
+*.ffmpeg
+*.png
+*.ts
+*.bpg
+*.ppm
