@@ -3,12 +3,16 @@ imlib2-heic
 
 Loader for [HEIC][1] for Imlib2 (i.e. for [Feh][2]). Based on libheif.
 
-Usage
+There is a pre-built amd64 deb package on [Github releases](https://github.com/vi/imlib2-heic/releases/).
+
+Building and deploying
 ---
 
-1. Ensure Imlib2 development things (like `libimlib2-dev`) are installed;
-2. Ensure libheif is installed.
-3. Build and install `heic.so`.
+On Debian amd64:
+
+1. `apt-get install libimlib2-dev libheif-dev pkg-config build-essential`
+2. `make`
+3. Copy `libheic.so` to `/usr/lib/x86_64-linux-gnu/imlib2/loaders`
 
 
 [1]:https://nokiatech.github.io/heif/technical.html
