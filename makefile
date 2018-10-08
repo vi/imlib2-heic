@@ -1,10 +1,8 @@
 include commands.mk
 
-BPGDIR=/mnt/src/p/libbpg-0.9.3
-
-OPTS    := -O2
-CFLAGS  := -std=c99 $(OPTS) $(shell imlib2-config --cflags) -fPIC -Wall -I${BPGDIR}
-LDFLAGS := $(shell imlib2-config --libs) -L${BPGDIR} -lbpg
+OPTS    := -O3
+CFLAGS  := -std=c99 $(OPTS) $(shell pkg-config libheif --cflags) -fPIC -Wall
+LDFLAGS := $(shell imlib2-config --libs) $(shell pkg-config libheif --libs)
 
 
 SRC = $(wildcard *.c)
@@ -20,10 +18,12 @@ endif
 
 .PHONY: all clean
 
-all: bpg.so
+all: heic.so
 
-bpg.so: $(OBJ)
-	$(CC) -shared -o $@ $^ $(LDFLAGS)
+heic.so: $(OBJ)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) 
+	cp $@ $@.debug
+	strip $@
 
 %.o: %.c
 	$(CC) -Wp,-MMD,$*.d -c $(CFLAGS) -o $@ $<
@@ -31,14 +31,14 @@ bpg.so: $(OBJ)
 clean:
 	$(RM) $(DEP)
 	$(RM) $(OBJ)
-	$(RM) bpg.so
+	$(RM) heic.so
 
 install:
 	$(INSTALL_DIR) $(DESTDIR)$(LOADERDIR)
-	$(INSTALL_LIB) bpg.so $(DESTDIR)$(LOADERDIR)
+	$(INSTALL_LIB) heic.so $(DESTDIR)$(LOADERDIR)
 
 uninstall:
-	$(RM) $(PLUGINDIR)/bpg.so
+	$(RM) $(PLUGINDIR)/heic.so
 
 -include $(DEP)
 

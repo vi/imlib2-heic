@@ -1,16 +1,15 @@
-imlib2-bpg
+imlib2-heic
 ---
 
-Loader for [BPG image format][1] for Imlib2 (i.e. for [Feh][2]).
+Loader for [HEIC][1] for Imlib2 (i.e. for [Feh][2]). Based on libheif.
 
 Usage
 ---
 
 1. Ensure Imlib2 development things (like `libimlib2-dev`) are installed;
-2. Build libbpg (for example, v0.9.3);
-3. Adjust BPGDIR in `makefile`;
-4. Build and install `bpg.so`.
+2. Ensure libheif is installed.
+3. Build and install `heic.so`.
 
 
-[1]:http://bellard.org/bpg/
+[1]:https://nokiatech.github.io/heif/technical.html
 [2]:http://feh.finalrewind.org/

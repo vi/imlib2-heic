@@ -1,10 +1,10 @@
-/* File: loader_bpg.c
+/* File: loader_heic.c
    Time-stamp: <2012-12-09 21:19:30 gawen>
 
    Copyright (c) 2011 David Hauweele <david@hauweele.net>
    All rights reserved.
    
-   Modified by Vitaly "_Vi" Shukela to use bpg instead of webp.
+   Modified by Vitaly "_Vi" Shukela to use heic instead of webp.
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions
@@ -46,109 +46,105 @@
 #include "loader.h"
 
 #include <inttypes.h>
-#include "libbpg.h"
+#include "libheif/heif.h"
 
 char load(ImlibImage * im, ImlibProgressFunction progress,
           char progress_granularity, char immediate_load)
 {
   
   int w,h;
-  uint8_t *buf = NULL;
-  int buf_len, buf_len_max;
-  FILE *f = NULL;
-  BPGImageInfo img_info_s, *img_info = &img_info_s;
-  BPGDecoderContext *img = NULL;
-  uint8_t *bgra = NULL;
-  int decoded_image_used = 0;
   int y=0;
+
+  char retcode = 0;
+  struct heif_context *ctx = heif_context_alloc();
+  struct heif_error ret;
+  struct heif_image_handle *imh = NULL;
+  struct heif_image *img = NULL;
   
   if(im->data)
     return 0;
 
 
-  f = fopen(im->real_file, "rb");
-  if (!f) {
-        goto EXIT;
-  }
+  ret =  heif_context_read_from_file(ctx, im->real_file, NULL);
 
-  {
-    fseek(f, 0, SEEK_END);
-    buf_len_max = ftell(f);
-    fseek(f, 0, SEEK_SET);
-  }
-  if (buf_len_max < 1) {
-     buf_len_max = BPG_DECODER_INFO_BUF_SIZE;
-  }
-
-  buf = malloc(buf_len_max);
-  if (!buf) {
+  if (ret.code != heif_error_Ok) {
 		goto EXIT;
   }
-  buf_len = fread(buf, 1, buf_len_max, f);
 
-  fclose(f); f = NULL;
-
-  
-  img = bpg_decoder_open();
-
-  if (bpg_decoder_decode(img, buf, buf_len) < 0) {
+  ret = heif_context_get_primary_image_handle(ctx, &imh);
+  if (ret.code != heif_error_Ok) {
 		goto EXIT;
   }
-  free(buf); buf = NULL;
+  if (!imh) {
+		goto EXIT;
+  }
 
+  w = heif_image_handle_get_width(imh);
+  h = heif_image_handle_get_height(imh);
   
-  bpg_decoder_get_info(img, img_info);
-    
-  w = img_info->width;
-  h = img_info->height;
+  im->w = w;
+  im->h = h;
 
-  bgra = malloc(4 * w * h);
+  if(!IMAGE_DIMENSIONS_OK(w, h))
+      goto EXIT;
+  
+  if(progress) {
+      progress(im, 0, 0, 0, w, h);
+  }
+
+  if (!immediate_load) {
+      retcode = 1;
+      goto EXIT;
+  }
+
+  ret = heif_decode_image(imh, &img, heif_colorspace_RGB, heif_chroma_interleaved_RGBA, NULL);
+  if (!imh) {
+		goto EXIT;
+  }
+  
+  /*struct heif_error heif_decode_image(const struct heif_image_handle* in_handle,
+                                    struct heif_image** out_img,
+                                    enum heif_colorspace colorspace,
+                                    enum heif_chroma chroma,
+                                    const struct heif_decoding_options* options);*/
+
+
+  int stride = 0;
+  uint8_t *plane  = heif_image_get_plane(img, heif_channel_interleaved, &stride);
+
+  if (!plane) {
+		goto EXIT;
+  }
+
+  uint8_t *bgra;
+  bgra = (uint8_t*)malloc(4 * w * h);
   if (!bgra) goto EXIT;
 
-  bpg_decoder_start(img, BPG_OUTPUT_FORMAT_RGBA32);
   for (y = 0; y < h; ++y) {
-     bpg_decoder_get_line(img, bgra + 4*w*y);
-
-	 int x;
-	 for (x=0; x < w; ++x) {
-		#define SWAP(a,b) { unsigned char tmp; tmp=a; a=b; b=tmp; }
-		SWAP(bgra[4*w*y + 4*x + 0], bgra[4*w*y + 4*x + 2]);
-		#undef SWAP
-	 }
+     int x;
+     for (x=0; x < w; ++x) {
+		  bgra[4*(y*w + x) + 0] = plane[y*stride + 4*x + 2];
+		  bgra[4*(y*w + x) + 1] = plane[y*stride + 4*x + 1];
+		  bgra[4*(y*w + x) + 2] = plane[y*stride + 4*x + 0];
+		  bgra[4*(y*w + x) + 3] = plane[y*stride + 4*x + 3];
+     }
   }
 
-  bpg_decoder_close(img); img = NULL;
-  
-  
-  if(!im->loader && !im->data) {
-    im->w = w;
-    im->h = h;
-
-    if(!IMAGE_DIMENSIONS_OK(w, h))
-      goto EXIT;
-
-    SET_FLAGS(im->flags, F_HAS_ALPHA);
-    
-    im->format = strdup("bpg");
-  }
-
-  if((!im->data && im->loader) || immediate_load || progress) {
-    im->data = (DATA32*)bgra;
-    decoded_image_used = 1;
-    if(progress)
+  im->data = (DATA32*)bgra;
+  if(progress)
       progress(im, 100, 0, 0, w, h);
-    return 1;
-  }
 
-  
+  SET_FLAGS(im->flags, F_HAS_ALPHA);
+    
+  im->format = strdup("heif");
+  retcode = 1;
 
 EXIT:
-  if (f) fclose(f);
-  if (buf) free(buf);
-  if (img) bpg_decoder_close(img);
-  if ((!decoded_image_used) && bgra) free(bgra);
+  if (ctx) heif_context_free(ctx);
+  if (imh) heif_image_handle_release(imh);
+  if (img) heif_image_release(img);
 
-  return 0;
+  return retcode;
 }
 
 char save(ImlibImage *im, ImlibProgressFunction progress,
@@ -160,7 +156,7 @@ char save(ImlibImage *im, ImlibProgressFunction progress,
 void formats(ImlibLoader *l)
 {
   int i;
-  char *list_formats[] = { "bpg" };
+  char *list_formats[] = { "heic", "heif" };
 
   l->num_formats = (sizeof(list_formats) / sizeof(char *));
   l->formats     = malloc(sizeof(char *) * l->num_formats);
