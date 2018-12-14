@@ -14,6 +14,11 @@ On Debian amd64:
 2. `make`
 3. Copy `libheic.so` to `/usr/lib/x86_64-linux-gnu/imlib2/loaders`
 
+Licence
+---
+
+imlib2-heic is BSD (3-clause), but it depends on libheif which is LGPL.
+
 
 [1]:https://nokiatech.github.io/heif/technical.html
 [2]:http://feh.finalrewind.org/
