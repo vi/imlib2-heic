@@ -53,7 +53,8 @@ char load(ImlibImage * im, ImlibProgressFunction progress,
 {
   
   int w,h;
-  int y=0;
+  int x=0,y=0;
+  int alpha;
 
   char retcode = 0;
   struct heif_context *ctx = heif_context_alloc();
@@ -81,6 +82,7 @@ char load(ImlibImage * im, ImlibProgressFunction progress,
 
   w = heif_image_handle_get_width(imh);
   h = heif_image_handle_get_height(imh);
+  alpha = heif_image_handle_has_alpha_channel(imh);
   
   im->w = w;
   im->h = h;
@@ -120,14 +122,15 @@ char load(ImlibImage * im, ImlibProgressFunction progress,
   bgra = (uint8_t*)malloc(4 * w * h);
   if (!bgra) goto EXIT;
 
+  int channel = alpha ? 4 : 3;
+
   for (y = 0; y < h; ++y) {
-     int x;
-     for (x=0; x < w; ++x) {
-		  bgra[4*(y*w + x) + 0] = plane[y*stride + 4*x + 2];
-		  bgra[4*(y*w + x) + 1] = plane[y*stride + 4*x + 1];
-		  bgra[4*(y*w + x) + 2] = plane[y*stride + 4*x + 0];
-		  bgra[4*(y*w + x) + 3] = plane[y*stride + 4*x + 3];
-     }
+    for (x = 0; x < w; ++x) {
+      bgra[4 * (y * w + x) + 0] =         plane[y * stride + channel * x + 2];
+      bgra[4 * (y * w + x) + 1] =         plane[y * stride + channel * x + 1];
+      bgra[4 * (y * w + x) + 2] =         plane[y * stride + channel * x + 0];
+      bgra[4 * (y * w + x) + 3] = alpha ? plane[y * stride + channel * x + 3] : 255;
+    }
   }
 
   im->data = (DATA32*)bgra;
