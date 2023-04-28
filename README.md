@@ -1,7 +1,7 @@
 imlib2-heic
 ---
 
-Loader for [HEIC][1] for *old version* Imlib2 (i.e. for [Feh][2]). Based on libheif.
+Loader for [HEIC][1] for **old version** of Imlib2 (i.e. for [Feh][2]). Based on libheif.
 
 Note that new imlib2 may have heif loader built-in, hence may not require this project to open heic images.
 
