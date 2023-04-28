@@ -1,7 +1,9 @@
 imlib2-heic
 ---
 
-Loader for [HEIC][1] for Imlib2 (i.e. for [Feh][2]). Based on libheif.
+Loader for [HEIC][1] for *old version* Imlib2 (i.e. for [Feh][2]). Based on libheif.
+
+Note that new imlib2 may have heif loader built-in, hence may not require this project to open heic images.
 
 There is a pre-built amd64 deb package on [Github releases](https://github.com/vi/imlib2-heic/releases/).
 
