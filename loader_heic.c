@@ -40,16 +40,13 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-#include <Imlib2.h>
-
-#include "imlib2_common.h"
-#include "loader.h"
+#include <Imlib2_Loader.h>
 
 #include <inttypes.h>
 #include "libheif/heif.h"
 
-char load(ImlibImage * im, ImlibProgressFunction progress,
-          char progress_granularity, char immediate_load)
+static int
+load(ImlibImage * im, int load_data)
 {
   
   int w,h;
@@ -65,7 +62,8 @@ char load(ImlibImage * im, ImlibProgressFunction progress,
     return 0;
 
 
-  ret =  heif_context_read_from_file(ctx, im->real_file, NULL);
+  ret = heif_context_read_from_memory_without_copy(ctx, im->fi->fdata,
+                                                   im->fi->fsize, NULL);
 
   if (ret.code != heif_error_Ok) {
 		goto EXIT;
@@ -88,11 +86,11 @@ char load(ImlibImage * im, ImlibProgressFunction progress,
   if(!IMAGE_DIMENSIONS_OK(w, h))
       goto EXIT;
   
-  if(progress) {
-      progress(im, 0, 0, 0, w, h);
+  if(im->lc) {
+      __imlib_LoadProgress(im, 0, 0, im->w, im->h);
   }
 
-  if (!immediate_load) {
+  if (!load_data) {
       retcode = 1;
       goto EXIT;
   }
@@ -130,13 +128,13 @@ char load(ImlibImage * im, ImlibProgressFunction progress,
      }
   }
 
-  im->data = (DATA32*)bgra;
-  if(progress)
-      progress(im, 100, 0, 0, w, h);
+  im->data = bgra;
 
-  SET_FLAGS(im->flags, F_HAS_ALPHA);
+  if(im->lc)
+      __imlib_LoadProgress(im, 0, 0, w, h);
+
+  im->has_alpha = 1;
     
-  im->format = strdup("heif");
   retcode = 1;
 
 EXIT:
@@ -147,19 +145,6 @@ EXIT:
   return retcode;
 }
 
-char save(ImlibImage *im, ImlibProgressFunction progress,
-          char progress_granularity)
-{
-  return 0;
-}
+static const char *formats[] = {"heic", "heif"};
 
-void formats(ImlibLoader *l)
-{
-  int i;
-  char *list_formats[] = { "heic", "heif" };
-
-  l->num_formats = (sizeof(list_formats) / sizeof(char *));
-  l->formats     = malloc(sizeof(char *) * l->num_formats);
-  for(i = 0 ; i < l->num_formats ; i++)
-    l->formats[i] = strdup(list_formats[i]);
-}
+IMLIB_LOADER(formats, load, NULL);
